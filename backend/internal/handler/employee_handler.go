@@ -83,7 +83,7 @@ func (h *EmployeeHandler) CreateEmployee(w http.ResponseWriter, r *http.Request)
 	}
 	defer r.Body.Close()
 
-	// Parse payload to validate
+	// Parse byte data to EmployeeCreate struct
 	var employee model.EmployeeCreate
 	if err := json.Unmarshal(payload, &employee); err != nil {
 		utils.Error(w, http.StatusBadRequest, "Invalid JSON payload")
