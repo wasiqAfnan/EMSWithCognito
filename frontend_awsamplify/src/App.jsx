@@ -34,10 +34,12 @@ function App() {
     try {
       setIsLoading(true);
       const currentUser = await getCurrentUser();
+      // console.log(currentUser);
       
       // Extract user claims from the ID token
       try {
         const session = await fetchAuthSession();
+        console.log(session);
         const idTokenPayload = session.tokens?.idToken?.payload;
         
         currentUser.attributes = {
