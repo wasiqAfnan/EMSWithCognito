@@ -37,3 +37,8 @@ local.json
 local.yaml
 local.env    
 local.env.yml
+
+.air.toml
+tmp/
+
+*.zip

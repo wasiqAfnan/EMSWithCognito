@@ -23,6 +23,13 @@ func Setup(
 	// Authentication middleware for protected routes
 	authMiddleware := middleware.Authentication(jwtVerifier)
 
+	// Auth routes (protected)
+	authHandler := handler.NewAuthHandler(apiGatewayClient, jwtVerifier)
+	mux.Handle(
+		"GET /api/me",
+		authMiddleware(http.HandlerFunc(authHandler.Me)),
+	)
+
 	// Employee routes (protected)
 	employeeHandler := handler.NewEmployeeHandler(apiGatewayClient)
 

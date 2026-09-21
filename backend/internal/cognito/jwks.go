@@ -190,3 +190,36 @@ func (v *JWTVerifier) VerifyAccessToken(tokenString string) (*jwt.Token, error) 
 
 	return token, nil
 }
+
+func (v *JWTVerifier) VerifyIDToken(tokenString string) (*jwt.Token, error) {
+	// Validate the token is RSA256 signed, who is issuer, expiry.
+	token, err := jwt.Parse(
+		tokenString,
+		v.keyFunc,
+		jwt.WithValidMethods([]string{"RS256"}),
+		jwt.WithIssuer(v.Issuer),
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return nil, fmt.Errorf("invalid token claims")
+	}
+
+	// Verify the token has the correct type
+	tokenUse, ok := claims["token_use"].(string)
+	if !ok || tokenUse != "id" {
+		return nil, fmt.Errorf("invalid token type, expected id")
+	}
+
+	// For ID tokens, verify 'aud' is the client id
+	aud, ok := claims["aud"].(string)
+	if !ok || aud != v.ClientID {
+		return nil, fmt.Errorf("invalid audience")
+	}
+
+	return token, nil
+}
