@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { signInWithRedirect, signOut, getCurrentUser, fetchAuthSession } from 'aws-amplify/auth';
 import { Hub } from 'aws-amplify/utils';
 import Dashboard from "./pages/Dashboard";
+import api from './utils/api';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -33,26 +34,26 @@ function App() {
   async function checkUser() {
     try {
       setIsLoading(true);
-      const currentUser = await getCurrentUser();
-      // console.log(currentUser);
+      const currentUser = await getCurrentUser(); // Just checks if logged in via Amplify
       
-      // Extract user claims from the ID token
-      try {
-        const session = await fetchAuthSession();
-        console.log(session);
-        const idTokenPayload = session.tokens?.idToken?.payload;
-        
-        currentUser.attributes = {
-          email: idTokenPayload?.email?.toString(),
-          name: idTokenPayload?.name?.toString()
-        };
-      } catch (attrErr) {
-        console.error('Could not fetch session tokens', attrErr);
+      // Fetch session specifically for the ID token required by /me
+      const session = await fetchAuthSession();
+      const idToken = session.tokens?.idToken?.toString();
+
+      // Call backend to authenticate and provision the user
+      const response = await api.get('/me', {
+        headers: idToken ? { 'X-Id-Token': idToken } : {}
+      });
+      
+      const userData = response.data?.data;
+      if (!userData) {
+        throw new Error('No user data returned from /me');
       }
-      
-      setUser(currentUser);
+
+      setUser(userData);
       setError(null);
     } catch (e) {
+      console.error('User check failed', e);
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -98,7 +99,7 @@ function App() {
     const mockAuth = {
       user: {
         profile: {
-          email: user.attributes?.email || user.attributes?.name || ''
+          email: user.name || user.email || "",
         }
       }
     };
