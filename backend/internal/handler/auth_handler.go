@@ -2,8 +2,8 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
-	"strings"
 
 	"awsems/internal/apigateway"
 	"awsems/internal/cognito"
@@ -25,49 +25,22 @@ func NewAuthHandler(apiGatewayClient *apigateway.Client, jwtVerifier *cognito.JW
 }
 
 func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
-	// 1. Extract Access Token
-	authHeader := r.Header.Get("Authorization")
-	if authHeader == "" || !strings.HasPrefix(authHeader, "Bearer ") {
-		utils.Error(w, http.StatusUnauthorized, "Missing or invalid authorization header")
-		return
-	}
-	accessToken := strings.TrimPrefix(authHeader, "Bearer ")
-
-	// 2. Extract ID Token
-	idTokenStr := r.Header.Get("X-Id-Token")
-	if idTokenStr == "" {
-		utils.Error(w, http.StatusBadRequest, "Missing X-Id-Token header")
-		return
-	}
-
-	// 3. Verify Access Token to get sub
-	parsedAccToken, err := h.jwtVerifier.VerifyAccessToken(accessToken)
-	if err != nil {
-		utils.Error(w, http.StatusUnauthorized, "Invalid access token")
-		return
-	}
-
-	claims, ok := parsedAccToken.Claims.(jwt.MapClaims)
-	if !ok {
-		utils.Error(w, http.StatusUnauthorized, "Invalid token claims")
-		return
-	}
-
-	sub, ok := claims["sub"].(string)
+	// 1. Read sub from context (set by auth middleware)
+	sub, ok := r.Context().Value("user_sub").(string)
 	if !ok || sub == "" {
-		utils.Error(w, http.StatusUnauthorized, "sub missing from access token")
+		utils.Error(w, http.StatusUnauthorized, "sub missing from context")
 		return
 	}
 
-	// 4. Call API Gateway to get user by sub
-	userJSON, statusCode, err := h.apiGatewayClient.Get("/users/" + sub)
+	// 2. Call API Gateway to get user by sub
+	userJSON, statusCode, err := h.apiGatewayClient.Get("/users/"+sub, nil)
 	if err != nil {
 		utils.Error(w, http.StatusInternalServerError, "Failed to call backend services")
 		return
 	}
 
 	if statusCode == 200 {
-		// User exists!
+		// User exists! Return immediately
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		w.Write(userJSON)
@@ -80,7 +53,13 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 5. User not found (404), provision new user
+	// 3. User not found (404), read and verify X-Id-Token for provisioning
+	idTokenStr := r.Header.Get("X-Id-Token")
+	if idTokenStr == "" {
+		utils.Error(w, http.StatusBadRequest, "Missing X-Id-Token header for user provisioning")
+		return
+	}
+
 	parsedIDToken, err := h.jwtVerifier.VerifyIDToken(idTokenStr)
 	if err != nil {
 		utils.Error(w, http.StatusUnauthorized, "Invalid ID token for provisioning")
@@ -97,13 +76,9 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	name, _ := idClaims["name"].(string)
 	phoneNumber, _ := idClaims["phone_number"].(string)
 
-	if email == "" || name == "" {
+	if email == "" || name == "" || phoneNumber == "" {
 		utils.Error(w, http.StatusBadRequest, "ID token missing required claims (email, name)")
 		return
-	}
-
-	if phoneNumber == "" {
-		phoneNumber = "" // Ensure phone number can be safely empty if not provided by Cognito depending on config
 	}
 
 	// Prepare CreateUser payload
@@ -120,15 +95,15 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 		utils.Error(w, http.StatusInternalServerError, "Failed to marshal payload")
 		return
 	}
-
-	// 6. Call API Gateway to create user
+	fmt.Printf("[CreateUser] Final JSON payload being sent to API Gateway: %s\n", string(payloadBytes))
+	// 4. Call API Gateway to create user
 	createdJSON, createStatus, err := h.apiGatewayClient.Post("/users", payloadBytes)
 	if err != nil || createStatus != 201 {
-		utils.Error(w, http.StatusInternalServerError, "Failed to create user in backend")
+		utils.Error(w, http.StatusInternalServerError, fmt.Sprintf("Failed to create user in backend: status=%d, err=%v, body=%s", createStatus, err, string(createdJSON)))
 		return
 	}
 
-	// 7. Return created user
+	// 5. Return created user
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(createdJSON)

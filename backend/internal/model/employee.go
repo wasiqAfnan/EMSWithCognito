@@ -9,6 +9,7 @@ type EmployeeCreate struct {
 	Role       string  `json:"role"`
 	Department string  `json:"department"`
 	Salary     float64 `json:"salary"`
+	CreatedBy  string  `json:"created_by"` // Cognito sub of the owner
 }
 
 // EmployeeUpdate holds the optional fields that can be updated for an employee.

@@ -1,10 +1,13 @@
 package middleware
 
 import (
+	"context"
 	"net/http"
 
 	"awsems/internal/cognito"
 	"awsems/internal/utils"
+
+	"github.com/golang-jwt/jwt/v5"
 )
 
 func Authentication(jwtVerifier *cognito.JWTVerifier) func(http.Handler) http.Handler {
@@ -25,13 +28,27 @@ func Authentication(jwtVerifier *cognito.JWTVerifier) func(http.Handler) http.Ha
 				tokenString = authHeader
 			}
 
-			_, err := jwtVerifier.VerifyAccessToken(tokenString)
+			token, err := jwtVerifier.VerifyAccessToken(tokenString)
 			if err != nil {
 				utils.Error(w, http.StatusUnauthorized, "Access token invalid or expired")
 				return
 			}
 
-			next.ServeHTTP(w, r)
+			claims, ok := token.Claims.(jwt.MapClaims)
+			if !ok {
+				utils.Error(w, http.StatusUnauthorized, "Invalid token claims")
+				return
+			}
+
+			sub, ok := claims["sub"].(string)
+			if !ok || sub == "" {
+				utils.Error(w, http.StatusUnauthorized, "sub missing from access token")
+				return
+			}
+
+			// Add the sub to the context
+			ctx := context.WithValue(r.Context(), "user_sub", sub)
+			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}
 }

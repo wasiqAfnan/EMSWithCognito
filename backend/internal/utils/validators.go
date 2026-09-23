@@ -108,6 +108,9 @@ func ValidateEmployeeCreate(e *model.EmployeeCreate) error {
 	if e.Salary < 0 {
 		return fmt.Errorf("salary must be greater than or equal to 0")
 	}
+	if err := ValidateString("created_by", e.CreatedBy); err != nil {
+		return err
+	}
 	return nil
 }
 

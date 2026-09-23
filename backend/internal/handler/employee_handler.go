@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -29,7 +30,16 @@ func (h *EmployeeHandler) GetEmployees(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	body, statusCode, err := h.APIGateway.Get("/employees")
+	path := "/employees"
+
+	payload, err := utils.EmbedCreatedBy(r.Context(), nil)
+	if err != nil {
+		utils.Error(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	// Sending the injected payload to the Lambda via API Gateway
+	body, statusCode, err := h.APIGateway.Get(path, payload)
 	if err != nil {
 		utils.Error(w, http.StatusInternalServerError, "Failed to reach API Gateway")
 		return
@@ -57,7 +67,13 @@ func (h *EmployeeHandler) SearchEmployees(w http.ResponseWriter, r *http.Request
 	}
 
 	path := "/employees/search?q=" + url.QueryEscape(query)
-	body, statusCode, err := h.APIGateway.Get(path)
+
+	payload, err := utils.EmbedCreatedBy(r.Context(), nil)
+	if err != nil {
+		utils.Error(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+	body, statusCode, err := h.APIGateway.Get(path, payload)
 	if err != nil {
 		utils.Error(w, http.StatusInternalServerError, "Failed to reach API Gateway")
 		return
@@ -76,6 +92,7 @@ func (h *EmployeeHandler) CreateEmployee(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	// Extract payload from request body
 	payload, err := io.ReadAll(r.Body)
 	if err != nil {
 		utils.Error(w, http.StatusBadRequest, "Failed to read request body")
@@ -83,20 +100,30 @@ func (h *EmployeeHandler) CreateEmployee(w http.ResponseWriter, r *http.Request)
 	}
 	defer r.Body.Close()
 
-	// Parse byte data to EmployeeCreate struct
+	// 1. Inject created_by from context before unmarshaling to model
+	enrichedPayload, err := utils.EmbedCreatedBy(r.Context(), payload)
+	if err != nil {
+		utils.Error(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	// 2. Parse enriched payload to EmployeeCreate struct
 	var employee model.EmployeeCreate
-	if err := json.Unmarshal(payload, &employee); err != nil {
+	if err := json.Unmarshal(enrichedPayload, &employee); err != nil {
 		utils.Error(w, http.StatusBadRequest, "Invalid JSON payload")
 		return
 	}
 
-	// Validate employee data
+	// 3. Validate employee data (now including the injected created_by)
 	if err := utils.ValidateEmployeeCreate(&employee); err != nil {
 		utils.Error(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	body, gwStatusCode, err := h.APIGateway.Post("/employees", payload)
+	// 4. Send the validated struct to API Gateway to ensure no missing fields
+	finalPayload, _ := json.Marshal(employee)
+	fmt.Printf("[CreateEmployee Go Handler] Final JSON payload being sent to API Gateway: %s\n", string(finalPayload))
+	body, gwStatusCode, err := h.APIGateway.Post("/employees", finalPayload)
 	if err != nil {
 		utils.Error(w, http.StatusInternalServerError, "Failed to reach API Gateway")
 		return
@@ -142,21 +169,30 @@ func (h *EmployeeHandler) UpdateEmployee(w http.ResponseWriter, r *http.Request)
 	}
 	defer r.Body.Close()
 
-	// Parse payload to validate
+	// 1. Inject created_by from context before unmarshaling to model
+	enrichedPayload, err := utils.EmbedCreatedBy(r.Context(), payload)
+	if err != nil {
+		utils.Error(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	// 2. Parse payload to validate
 	var employeeUpdate model.EmployeeUpdate
-	if err := json.Unmarshal(payload, &employeeUpdate); err != nil {
+	if err := json.Unmarshal(enrichedPayload, &employeeUpdate); err != nil {
 		utils.Error(w, http.StatusBadRequest, "Invalid JSON payload")
 		return
 	}
 
-	// Validate employee update data
+	// 3. Validate employee update data
 	if err := utils.ValidateEmployeeUpdate(&employeeUpdate); err != nil {
 		utils.Error(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	path := "/employees/" + url.PathEscape(empId)
-	body, gwStatusCode, err := h.APIGateway.Patch(path, payload)
+
+	// 4. Send enriched payload to API Gateway
+	body, gwStatusCode, err := h.APIGateway.Patch(path, enrichedPayload)
 	if err != nil {
 		utils.Error(w, http.StatusInternalServerError, "Failed to reach API Gateway")
 		return
@@ -194,7 +230,14 @@ func (h *EmployeeHandler) DeleteEmployee(w http.ResponseWriter, r *http.Request)
 	}
 
 	path := "/employees/" + url.PathEscape(empId)
-	body, statusCode, err := h.APIGateway.Delete(path)
+
+	payload, err := utils.EmbedCreatedBy(r.Context(), nil)
+	if err != nil {
+		utils.Error(w, http.StatusUnauthorized, err.Error())
+		return
+	}
+
+	body, statusCode, err := h.APIGateway.Delete(path, payload)
 	if err != nil {
 		utils.Error(w, http.StatusInternalServerError, "Failed to reach API Gateway")
 		return

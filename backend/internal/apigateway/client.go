@@ -24,10 +24,25 @@ func NewClient(cfg *config.Config) *Client {
 
 // Get sends a GET request to the given path on the API Gateway base URL.
 // It returns the raw response body, the HTTP status code, and any error.
-func (c *Client) Get(path string) ([]byte, int, error) {
+func (c *Client) Get(path string, payload []byte) ([]byte, int, error) {
 	url := fmt.Sprintf("%s%s", c.BaseURL, path)
 
-	resp, err := c.HTTPClient.Get(url)
+	var req *http.Request
+	var err error
+	if len(payload) > 0 {
+		req, err = http.NewRequest(http.MethodGet, url, strings.NewReader(string(payload)))
+		if err == nil {
+			req.Header.Set("Content-Type", "application/json")
+		}
+	} else {
+		req, err = http.NewRequest(http.MethodGet, url, nil)
+	}
+
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to create GET request: %w", err)
+	}
+
+	resp, err := c.HTTPClient.Do(req)
 	if err != nil {
 		return nil, 0, fmt.Errorf("request to API Gateway failed: %w", err)
 	}
@@ -93,10 +108,20 @@ func (c *Client) Patch(path string, payload []byte) ([]byte, int, error) {
 
 // Delete sends a DELETE request to the given path.
 // It returns the raw response body, the HTTP status code, and any error.
-func (c *Client) Delete(path string) ([]byte, int, error) {
+func (c *Client) Delete(path string, payload []byte) ([]byte, int, error) {
 	url := fmt.Sprintf("%s%s", c.BaseURL, path)
 
-	req, err := http.NewRequest(http.MethodDelete, url, nil)
+	var req *http.Request
+	var err error
+	if len(payload) > 0 {
+		req, err = http.NewRequest(http.MethodDelete, url, strings.NewReader(string(payload)))
+		if err == nil {
+			req.Header.Set("Content-Type", "application/json")
+		}
+	} else {
+		req, err = http.NewRequest(http.MethodDelete, url, nil)
+	}
+
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to create DELETE request: %w", err)
 	}
