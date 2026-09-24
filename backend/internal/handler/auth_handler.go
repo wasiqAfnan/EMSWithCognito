@@ -74,28 +74,28 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 
 	email, _ := idClaims["email"].(string)
 	name, _ := idClaims["name"].(string)
-	phoneNumber, _ := idClaims["phone_number"].(string)
 
-	if email == "" || name == "" || phoneNumber == "" {
+	if email == "" || name == "" {
 		utils.Error(w, http.StatusBadRequest, "ID token missing required claims (email, name)")
 		return
 	}
 
-	// Prepare CreateUser payload
+	// Prepare CreateUser payload in map
 	payload := map[string]interface{}{
-		"cognito_sub":  sub,
-		"email":        email,
-		"name":         name,
-		"phone_number": phoneNumber,
-		"role":         "USER",
+		"cognito_sub": sub,
+		"email":       email,
+		"name":        name,
+		"role":        "USER",
 	}
 
+	// Coverts map data to JSON
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {
 		utils.Error(w, http.StatusInternalServerError, "Failed to marshal payload")
 		return
 	}
-	fmt.Printf("[CreateUser] Final JSON payload being sent to API Gateway: %s\n", string(payloadBytes))
+	// fmt.Printf("[CreateUser] Final JSON payload being sent to API Gateway: %s\n", string(payloadBytes))
+
 	// 4. Call API Gateway to create user
 	createdJSON, createStatus, err := h.apiGatewayClient.Post("/users", payloadBytes)
 	if err != nil || createStatus != 201 {
