@@ -49,13 +49,6 @@ def lambda_handler(event, context):
                 "Email already exists"
             )
 
-        # Check if contact number already exists
-        if employees_collection.find_one({"contactNo": employee.contactNo}):
-            return error_response(
-                409,
-                "Contact number already exists"
-            )
-
         # Insert employee into MongoDB
         result = employees_collection.insert_one(employee_data)
 
@@ -86,8 +79,6 @@ def lambda_handler(event, context):
         elif "email" in error_message:
             message = "Email already exists"
 
-        elif "contactNo" in error_message:
-            message = "Contact number already exists"
 
         else:
             message = "Employee with the same unique field already exists"
