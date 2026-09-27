@@ -82,7 +82,7 @@ def lambda_handler(event, context):
                 )
 
             update_data["email"] = str(update_data["email"])
-
+            
         # Check if contact number already belongs to another employee
         if "contactNo" in update_data:
             existing_contact = employees_collection.find_one({
@@ -128,10 +128,8 @@ def lambda_handler(event, context):
 
         if "email" in error_message:
             message = "Email already exists"
-
         elif "contactNo" in error_message:
             message = "Contact number already exists"
-
         else:
             message = "Employee with the same unique field already exists"
 
