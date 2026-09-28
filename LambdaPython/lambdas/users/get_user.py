@@ -44,4 +44,3 @@ def lambda_handler(event, context):
             500,
             "Internal server error"
         )
-
