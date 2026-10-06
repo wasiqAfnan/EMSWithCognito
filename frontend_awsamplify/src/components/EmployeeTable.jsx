@@ -24,7 +24,6 @@ export default function EmployeeTable({ employees, loading, onEdit, onDelete }) 
               <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Emp ID</th>
               <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Name</th>
               <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Email</th>
-              <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Contact</th>
               <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Role</th>
               <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Department</th>
               <th className="px-6 py-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Salary</th>
@@ -37,7 +36,6 @@ export default function EmployeeTable({ employees, loading, onEdit, onDelete }) 
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{emp.empId}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-800">{emp.name}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{emp.email}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{emp.contactNo}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{emp.role}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{emp.department}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{emp.salary?.toLocaleString('en-IN') || 0}</td>

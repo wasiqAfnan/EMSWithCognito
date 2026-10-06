@@ -20,7 +20,7 @@ Amplify.configure({
       loginWith: {
         oauth: {
           domain: domain,
-          scopes: ['email', 'openid', 'phone', 'profile'],
+          scopes: ['email', 'openid', 'profile'],
           redirectSignIn: [window.location.origin],
           redirectSignOut: [window.location.origin],
           responseType: 'code'
