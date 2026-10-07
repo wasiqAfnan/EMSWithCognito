@@ -167,3 +167,10 @@ cython_debug/
 
 *.zip
 
+# AWS CDK Output
+cdk.out/
+
+# Lambda Layer installed dependencies
+layers/dependencies/python/
+
+
