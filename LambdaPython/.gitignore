@@ -172,5 +172,6 @@ cdk.out/
 
 # Lambda Layer installed dependencies
 layers/dependencies/python/
-
+deploy_SAM/.aws-sam
+deploy_CDK/cdk.out
 

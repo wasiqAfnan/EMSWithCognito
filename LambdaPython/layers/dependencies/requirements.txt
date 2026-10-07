@@ -1,0 +1,4 @@
+boto3
+pydantic[email]
+pymongo
+python-dotenv
